@@ -1,4 +1,5 @@
 mod converter;
+mod grammar;
 
 use std::time::Duration;
 
@@ -41,11 +42,21 @@ fn main() {
                     Ok(api_response) => {
 
                         // Parse for only the text value
-                        let text: Value = serde_json::from_str(api_response.as_str()).expect("Failed to serialise");
-                        let text_value = text["text"].as_str().unwrap_or_default();
+                        let text_value: Value = serde_json::from_str(api_response.as_str()).expect("Failed to serialise");
+                        let mut text = text_value["text"].as_str().unwrap_or_default();
+
+                        // Check the spelling
+                        match grammar::check_spelling(text) {
+                            Ok(spellchecked_text) => {
+                                text = spellchecked_text;
+                            },
+                            Err(err) => {
+                                println!("Error checking the spelling {}", err);
+                            }
+                        }
 
                         // Write the &str to the screen
-                        enigo.key_sequence(text_value);
+                        enigo.key_sequence(text);
                     }
                     Err(err) => {
                         eprintln!("Error sending request: {}", err);
