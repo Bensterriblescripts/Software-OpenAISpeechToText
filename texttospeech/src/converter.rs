@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
@@ -7,7 +8,7 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue};
 
-pub fn audio_return() {
+pub fn write_audio() -> Option<cpal::Stream> {
 
     // Device
     let host = cpal::default_host();
@@ -25,7 +26,6 @@ pub fn audio_return() {
         sample_format: hound::SampleFormat::Int,
 
     }).expect("Failed to create the wav file.");
-    let mut audio_data: Vec<i16> = Vec::new();
 
     // Input Stream
     let timeout = Some(Duration::from_secs(3));
@@ -35,7 +35,6 @@ pub fn audio_return() {
             move |data: &[i16], _: &cpal::InputCallbackInfo| {
                 for &sample in data {
                     file.write_sample(sample).expect("Failed to write audio data to file");
-                    audio_data.push(sample);
                 }
             },
             move |err| eprintln!("Error in stream: {}", err),
@@ -48,29 +47,22 @@ pub fn audio_return() {
 
     // Record the audio
     stream.play().expect("Failed to start stream");
-    std::thread::sleep(Duration::from_secs(3));
-    stream.pause().expect("Failed to pause the stream.");
 
-    // Send the request
-    let _result = send_request();
-
-    std::thread::sleep(std::time::Duration::from_secs(100));
+    return Some(stream);
 }
 
-fn send_request() -> Result<(), Box<dyn std::error::Error>> {
+// Send the OpenAI request
+pub fn send_request() -> Result<String, Box<dyn std::error::Error>> {
 
     let apikey = env::var("openai")?;
-    let client = Client::new();
 
     // Request Headers
     let mut headers = HeaderMap::new();
     headers.insert("Authorization", HeaderValue::from_str(&format!("Bearer {}", apikey))?);
 
-
     // Audio File
     let filepath = "output.wav";
     let mut file = File::open(filepath)?;
-    println!("File: {:?}", file);
     let mut buffer = Vec::new();
     file.read_to_end(&mut buffer)?;
 
@@ -80,14 +72,20 @@ fn send_request() -> Result<(), Box<dyn std::error::Error>> {
         .part("model", reqwest::blocking::multipart::Part::text("whisper-1"));
 
     // Make the HTTP POST request to the OpenAI API
+    let client = Client::new();
     let response = client
         .post("https://api.openai.com/v1/audio/transcriptions")
         .headers(headers)
         .multipart(form)
         .send()?;
 
-    // Handle the API response here (e.g., print or process the result)
-    println!("API Response: {}", response.text()?);
+    let response_text = response.text().unwrap();
 
-    Ok(())
+    // Delete the wav file
+    match fs::remove_file("output.wav") {
+        Ok(_) => (),
+        Err(e) => eprintln!("Error deleting the wav file: {}", e)
+    }
+
+    Ok(response_text)
 }
