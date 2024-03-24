@@ -1,4 +1,3 @@
-use std::{fs, mem, u32};
 use std::fs::File;
 use std::io::Read;
 use std::time::Duration;
@@ -58,9 +57,6 @@ pub fn write_input_audio() -> Option<cpal::Stream> {
     return Some(stream);
 }
 pub fn write_output_audio() -> Option<cpal::Stream> {
-
-    let available_hosts = cpal::OutputDevices();
-    println!("Available hosts: {:?}", available_hosts);
 
     // Device - Output
     let host = cpal::default_host();

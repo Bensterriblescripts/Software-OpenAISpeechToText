@@ -11,7 +11,7 @@ use winapi::um::winuser::GetAsyncKeyState;
 fn main() {
 
     // Main Config
-    let mode = "output"; // microphone input: "input", computer output: "output"
+    let mode = "input"; // microphone input: "input", computer output: "output"
     let output_mode = "console"; // auto-typer: "type" or print to console: "console"
     let spelling = false; // spell checker
 
